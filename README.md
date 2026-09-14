@@ -14,52 +14,7 @@ SAFAR is an enterprise-grade, distributed public transit tracking and arrival pr
 
 ## 🏛️ System Architecture
 
-```mermaid
-graph TD
-    subgraph Client Layer [Frontend - React 18 SPA]
-        A[Conductor Dashboard] -->|GPS Stream with SeqNo| SC[Socket.IO Client]
-        B[Passenger Dashboard] -->|Live Room Subscriptions| SC
-        C[Admin / Dispatcher UI] -->|REST API with Auto-Refresh| AC[Axios Client with Retry & Backoff]
-        M[Dual-Engine Map Component] -->|Default / Fallback| L[Leaflet / OpenStreetMap]
-        M -->|Optional Switch| G[Google Maps JS API]
-    end
-
-    subgraph Gateway & Security [Express.js Gateway & RBAC]
-        H[Helmet / HPP / MongoSanitize]
-        RL[Tiered Rate Limiters: API, Auth, Telemetry]
-        JWT[JWT Auth & TokenVersion Revocation]
-        RBAC[RBAC: Passenger, Conductor, Dispatcher, Admin]
-        OWN[Conductor Vehicle Ownership Verification]
-        VAL[Joi Schema Validator]
-    end
-
-    subgraph Ingestion & Telemetry [Canonical Telemetry Pipeline]
-        TEL[TelemetryService]
-        DEDUP[Idempotency & Sequence Number Filter]
-        QCHK[GPS Quality Validation: VALID, SUSPICIOUS, INVALID]
-        STALE[Vehicle Staleness Detector: 120s TTL]
-    end
-
-    subgraph Core Services [Modular Monolith Engine]
-        BUS[Bus State Manager]
-        ROUTE[Route & Stop Manager]
-        EMG[Emergency Dispatch & Resolver]
-        ML[Zero-Leakage Hybrid ML ETA Engine]
-        SOCK[Socket.IO Room Multiplexer]
-    end
-
-    subgraph Data & Storage [MongoDB 7.0 Persistence]
-        MDB_GEO[(GeoJSON Point & 2dsphere Geospatial Queries)]
-        MDB_TTL[(Tracking History with 30-Day TTL Index)]
-        MDB_AUTH[(Hashed Refresh Token Families & tokenVersion)]
-        MDB_MODEL[(Trained Weights, Norm Scalers & Metadata)]
-    end
-
-    Client Layer -->|HTTPS / WSS| Gateway & Security
-    Gateway & Security --> Ingestion & Telemetry
-    Ingestion & Telemetry --> Core Services
-    Core Services --> Data & Storage
-```
+<img width="1534" height="1739" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/fe50d9c3-062c-40cc-b03f-c21e984f25d0" />
 
 ---
 
