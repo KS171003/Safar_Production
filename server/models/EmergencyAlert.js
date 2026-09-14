@@ -44,4 +44,7 @@ const emergencyAlertSchema = new mongoose.Schema(
   }
 );
 
+emergencyAlertSchema.index({ busId: 1, status: 1 });
+emergencyAlertSchema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model("EmergencyAlert", emergencyAlertSchema);

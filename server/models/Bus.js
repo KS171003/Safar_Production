@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 
+/**
+ * Bus Schema for Safar application
+ */
 const busSchema = new mongoose.Schema(
   {
     busNumber: {
@@ -15,7 +18,14 @@ const busSchema = new mongoose.Schema(
     routeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Route",
-      required: true,
+    },
+    capacity: {
+      type: Number,
+      default: 50,
+    },
+    passengerCount: {
+      type: Number,
+      default: 0,
     },
     currentLocation: {
       latitude: Number,
@@ -53,7 +63,16 @@ const busSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
+
+busSchema.index({ routeId: 1, isActive: 1 });
+busSchema.index({ conductorId: 1 });
 
 module.exports = mongoose.model("Bus", busSchema);

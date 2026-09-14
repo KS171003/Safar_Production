@@ -6,6 +6,10 @@ const trackingDataSchema = new mongoose.Schema({
     ref: "Bus",
     required: true,
   },
+  routeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Route",
+  },
   location: {
     latitude: {
       type: Number,
@@ -34,7 +38,7 @@ const trackingDataSchema = new mongoose.Schema({
   },
   stopId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Route.stops",
+    ref: "Route",
   },
   isAtStop: {
     type: Boolean,
@@ -44,6 +48,7 @@ const trackingDataSchema = new mongoose.Schema({
 
 // Index for efficient queries
 trackingDataSchema.index({ busId: 1, timestamp: -1 });
-trackingDataSchema.index({ timestamp: -1 });
+trackingDataSchema.index({ timestamp: -1 }, { expireAfterSeconds: 2592000 });
+trackingDataSchema.index({ busId: 1, routeId: 1, timestamp: -1 });
 
 module.exports = mongoose.model("TrackingData", trackingDataSchema);

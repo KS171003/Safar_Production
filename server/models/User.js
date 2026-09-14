@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+/**
+ * User Schema for Safar application
+ */
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -8,6 +11,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
+      index: true,
     },
     password: {
       type: String,
@@ -30,9 +34,6 @@ const userSchema = new mongoose.Schema(
     busId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Bus",
-      required: function () {
-        return this.userType === "conductor";
-      },
     },
     isActive: {
       type: Boolean,
@@ -43,6 +44,16 @@ const userSchema = new mongoose.Schema(
       longitude: Number,
       timestamp: Date,
     },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+    },
+    refreshToken: {
+      type: String,
+    },
   },
   {
     timestamps: true,
@@ -50,15 +61,14 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
   } catch (error) {
-    next(error);
+    throw error;
   }
 });
 

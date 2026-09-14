@@ -151,10 +151,13 @@ const ArrivalPrediction = ({ buses, userLocation, route }) => {
   return (
     <Card>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          <Schedule sx={{ mr: 1, verticalAlign: "middle" }} />
-          Arrival Predictions
-        </Typography>
+        <Box display="flex" alignItems="center" mb={2}>
+          <Typography variant="h6" sx={{ mr: 2 }}>
+            <Schedule sx={{ mr: 1, verticalAlign: "middle" }} />
+            Arrival Predictions
+          </Typography>
+          <Chip label="ML-Powered" color="secondary" size="small" variant="outlined" />
+        </Box>
 
         <Grid container spacing={2}>
           {predictions.map((prediction, index) => {
@@ -195,9 +198,16 @@ const ArrivalPrediction = ({ buses, userLocation, route }) => {
                     </Box>
 
                     <Box mb={2}>
-                      <Typography variant="h4" color="primary" gutterBottom>
-                        {formatTime(prediction.timeToPassenger)}
-                      </Typography>
+                      <Box display="flex" alignItems="baseline" gutterBottom>
+                        <Typography variant="h4" color="primary" sx={{ mr: 1 }}>
+                          {formatTime(prediction.timeToPassenger)}
+                        </Typography>
+                        {prediction.confidenceInterval && (
+                          <Typography variant="subtitle1" color="text.secondary">
+                            ± {prediction.confidenceInterval} min
+                          </Typography>
+                        )}
+                      </Box>
                       <LinearProgress
                         variant="determinate"
                         value={progress}
@@ -255,6 +265,11 @@ const ArrivalPrediction = ({ buses, userLocation, route }) => {
         </Grid>
 
         <Box mt={2}>
+          {predictions.length > 0 && predictions[0].modelAccuracy && (
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Model Accuracy: {(predictions[0].modelAccuracy * 100).toFixed(1)}%
+            </Typography>
+          )}
           <Typography variant="body2" color="text.secondary">
             * Predictions are based on current bus location and speed. Actual
             arrival times may vary due to traffic conditions.

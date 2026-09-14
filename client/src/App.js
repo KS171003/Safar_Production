@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,16 +7,21 @@ import {
 } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { CircularProgress, Box } from "@mui/material";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SocketProvider } from "./contexts/SocketContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import ConductorDashboard from "./components/ConductorDashboard";
-import PassengerDashboard from "./components/PassengerDashboard";
-import RouteManagement from "./components/RouteManagement";
-import BusTracking from "./components/BusTracking";
-import EmergencyAlert from "./components/EmergencyAlert";
+
 import "./App.css";
+
+const Login = React.lazy(() => import("./components/Login"));
+const Register = React.lazy(() => import("./components/Register"));
+const ConductorDashboard = React.lazy(() => import("./components/ConductorDashboard"));
+const PassengerDashboard = React.lazy(() => import("./components/PassengerDashboard"));
+const RouteManagement = React.lazy(() => import("./components/RouteManagement"));
+const BusTracking = React.lazy(() => import("./components/BusTracking"));
+const EmergencyAlert = React.lazy(() => import("./components/EmergencyAlert"));
 
 const theme = createTheme({
   palette: {
@@ -51,67 +56,77 @@ function ProtectedRoute({ children, userType }) {
   return children;
 }
 
+const LoadingFallback = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+    <CircularProgress />
+  </Box>
+);
+
 function AppContent() {
   const { user } = useAuth();
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
     <>
       <Navbar />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            user.userType === "conductor" ? (
-              <Navigate to="/conductor" />
-            ) : (
-              <Navigate to="/passenger" />
-            )
-          }
-        />
-        <Route
-          path="/conductor"
-          element={
-            <ProtectedRoute userType="conductor">
-              <ConductorDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/passenger"
-          element={
-            <ProtectedRoute userType="passenger">
-              <PassengerDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/routes"
-          element={
-            <ProtectedRoute userType="conductor">
-              <RouteManagement />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/tracking/:busId" element={<BusTracking />} />
-        <Route
-          path="/emergency"
-          element={
-            <ProtectedRoute userType="conductor">
-              <EmergencyAlert />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              user.userType === "conductor" ? (
+                <Navigate to="/conductor" />
+              ) : (
+                <Navigate to="/passenger" />
+              )
+            }
+          />
+          <Route
+            path="/conductor"
+            element={
+              <ProtectedRoute userType="conductor">
+                <ConductorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/passenger"
+            element={
+              <ProtectedRoute userType="passenger">
+                <PassengerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/routes"
+            element={
+              <ProtectedRoute userType="conductor">
+                <RouteManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/tracking/:busId" element={<BusTracking />} />
+          <Route
+            path="/emergency"
+            element={
+              <ProtectedRoute userType="conductor">
+                <EmergencyAlert />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Suspense>
     </>
   );
 }
@@ -120,13 +135,17 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <div className="App">
-            <AppContent />
-          </div>
-        </Router>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <SocketProvider>
+            <Router>
+              <div className="App">
+                <AppContent />
+              </div>
+            </Router>
+          </SocketProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

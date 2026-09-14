@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: safar-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=safar
+    volumes:
+      - safar-mongo-data:/data/db
+    networks:
+      - safar-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: safar-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/safar
+      - JWT_SECRET=safar-super-secret-jwt-key-production-grade-2026
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:80
+      - LOG_LEVEL=info
+      - NODE_ENV=production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - safar-network
+    volumes:
+      - safar-server-logs:/usr/src/app/logs
+      - safar-ml-model:/usr/src/app/ml/saved_model
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=/api
+        - REACT_APP_SOCKET_URL=/
+    container_name: safar-client
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    networks:
+      - safar-network
+
+networks:
+  safar-network:
+    driver: bridge
+
+volumes:
+  safar-mongo-data:
+    driver: local
+  safar-server-logs:
+    driver: local
+  safar-ml-model:
+    driver: local

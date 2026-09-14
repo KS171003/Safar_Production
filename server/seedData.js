@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
 const User = require("./models/User");
@@ -139,11 +138,10 @@ const seedData = async () => {
     const createdConductors = [];
     for (let i = 0; i < conductors.length; i++) {
       const conductor = conductors[i];
-      const hashedPassword = await bcrypt.hash(conductor.password, 10);
 
+      // Create user first without busId
       const user = new User({
         ...conductor,
-        password: hashedPassword,
       });
 
       const savedUser = await user.save();
@@ -204,11 +202,8 @@ const seedData = async () => {
     ];
 
     for (const passenger of passengers) {
-      const hashedPassword = await bcrypt.hash(passenger.password, 10);
-
       const user = new User({
         ...passenger,
-        password: hashedPassword,
       });
 
       await user.save();
@@ -221,14 +216,14 @@ const seedData = async () => {
     console.log("Conductors:");
     conductors.forEach((conductor, index) => {
       console.log(
-        `  ${conductor.email} / ${conductor.password} (Bus BUS${String(
+        `  ${conductor.email} / password123 (Bus BUS${String(
           index + 1
         ).padStart(3, "0")})`
       );
     });
     console.log("\nPassengers:");
     passengers.forEach((passenger) => {
-      console.log(`  ${passenger.email} / ${passenger.password}`);
+      console.log(`  ${passenger.email} / password123`);
     });
   } catch (error) {
     console.error("Error seeding database:", error);

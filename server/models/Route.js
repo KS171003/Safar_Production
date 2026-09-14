@@ -51,12 +51,20 @@ const routeSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
     },
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+routeSchema.virtual("stopCount").get(function () {
+  return this.stops ? this.stops.length : 0;
+});
+
+routeSchema.index({ isActive: 1 });
 
 module.exports = mongoose.model("Route", routeSchema);

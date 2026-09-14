@@ -25,7 +25,7 @@ import {
   Warning,
 } from "@mui/icons-material";
 import MapComponent from "./MapComponent";
-import io from "socket.io-client";
+import { useSocket } from "../contexts/SocketContext";
 
 const BusTracking = () => {
   const { busId } = useParams();
@@ -33,19 +33,51 @@ const BusTracking = () => {
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [socket, setSocket] = useState(null);
+  const { socket, isConnected } = useSocket();
   const [realTimeLocation, setRealTimeLocation] = useState(null);
 
   useEffect(() => {
     fetchBusData();
-    initializeSocket();
+    
+    if (socket) {
+      socket.emit("join-bus-tracking", busId);
 
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [busId]);
+      const handleLocationUpdate = (data) => {
+        if (data.busId === busId) {
+          setRealTimeLocation({
+            lat: data.location.latitude,
+            lng: data.location.longitude,
+          });
+
+          setBus((prev) => ({
+            ...prev,
+            currentLocation: {
+              latitude: data.location.latitude,
+              longitude: data.location.longitude,
+              timestamp: data.timestamp,
+            },
+            speed: data.speed,
+            direction: data.direction,
+            lastUpdateTime: data.timestamp,
+          }));
+        }
+      };
+
+      const handleEmergency = (data) => {
+        if (data.busId === busId) {
+          console.log("Emergency alert for this bus:", data);
+        }
+      };
+
+      socket.on("bus-location-update", handleLocationUpdate);
+      socket.on("emergency-broadcast", handleEmergency);
+
+      return () => {
+        socket.off("bus-location-update", handleLocationUpdate);
+        socket.off("emergency-broadcast", handleEmergency);
+      };
+    }
+  }, [busId, socket]);
 
   const fetchBusData = async () => {
     try {
@@ -68,48 +100,7 @@ const BusTracking = () => {
     }
   };
 
-  const initializeSocket = () => {
-    const newSocket = io("http://localhost:5000");
-    setSocket(newSocket);
 
-    newSocket.emit("join-bus-tracking", busId);
-
-    newSocket.on("bus-location-update", (data) => {
-      if (data.busId === busId) {
-        setRealTimeLocation({
-          lat: data.location.latitude,
-          lng: data.location.longitude,
-        });
-
-        setBus((prev) => ({
-          ...prev,
-          currentLocation: {
-            latitude: data.location.latitude,
-            longitude: data.location.longitude,
-            timestamp: data.timestamp,
-          },
-          speed: data.speed,
-          direction: data.direction,
-          lastUpdateTime: data.timestamp,
-        }));
-      }
-    });
-
-    newSocket.on("emergency-broadcast", (data) => {
-      if (data.busId === busId) {
-        // Show emergency alert
-        console.log("Emergency alert for this bus:", data);
-      }
-    });
-
-    newSocket.on("connect", () => {
-      console.log("Connected to server");
-    });
-
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
-  };
 
   const getBusStatus = (bus) => {
     if (bus?.emergencyStatus === "emergency")
@@ -180,9 +171,17 @@ const BusTracking = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box className="main-content">
-        <Typography variant="h4" gutterBottom>
-          Bus Tracking - {bus.busNumber}
-        </Typography>
+        <Box display="flex" alignItems="center" mb={2}>
+          <Typography variant="h4" sx={{ mr: 2 }}>
+            Bus Tracking - {bus.busNumber}
+          </Typography>
+          <Chip
+            label={isConnected ? "Connected" : "Disconnected"}
+            color={isConnected ? "success" : "error"}
+            size="small"
+            variant="outlined"
+          />
+        </Box>
 
         <Grid container spacing={3}>
           {/* Bus Information */}
