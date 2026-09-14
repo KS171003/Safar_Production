@@ -31,6 +31,7 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data);
     } catch (error) {
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
     } finally {
       setLoading(false);
     }
@@ -39,9 +40,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await api.post("/api/auth/login", { email, password });
-      const { token, user: userData } = response.data;
+      const { token, refreshToken, user: userData } = response.data;
 
       localStorage.setItem("token", token);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
       setUser(userData);
 
       return { success: true };
@@ -56,9 +60,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await api.post("/api/auth/register", userData);
-      const { token, user: newUser } = response.data;
+      const { token, refreshToken, user: newUser } = response.data;
 
       localStorage.setItem("token", token);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
       setUser(newUser);
 
       return { success: true };
@@ -70,9 +77,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
+  const logout = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    try {
+      if (refreshToken) {
+        await api.post("/api/auth/logout", { refreshToken });
+      }
+    } catch (err) {
+      // Ignore logout network errors and proceed with client-side cleanup
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      setUser(null);
+    }
   };
 
   const value = {

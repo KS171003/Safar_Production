@@ -34,6 +34,29 @@ router.get('/status', async (req, res) => {
 });
 
 /**
+ * GET /api/ml/baselines
+ * Returns baseline comparisons on the held-out test set
+ */
+router.get('/baselines', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const metaPath = path.join(__dirname, '../ml/saved_model/metadata.json');
+
+  if (fs.existsSync(metaPath)) {
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    return res.json({
+      success: true,
+      modelVersion: meta.modelVersion,
+      datasetType: meta.datasetType,
+      baselines: meta.testMetrics,
+      datasetSplits: meta.datasetSplits,
+    });
+  }
+
+  res.status(404).json({ success: false, message: 'Model metadata not found' });
+});
+
+/**
  * GET /api/ml/metrics
  * Returns ongoing prediction accuracy from the evaluation module.
  */

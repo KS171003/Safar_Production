@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import api from "../utils/api";
 import {
   Container,
   Card,
@@ -23,7 +24,6 @@ import {
   ListItemIcon,
   Chip,
   Grid,
-  Paper,
   Divider,
   CircularProgress,
 } from "@mui/material";
@@ -35,8 +35,6 @@ import {
   Build,
   Security,
   Help,
-  CheckCircle,
-  Cancel,
 } from "@mui/icons-material";
 
 const EmergencyAlert = () => {
@@ -76,16 +74,10 @@ const EmergencyAlert = () => {
 
   const fetchAlerts = async () => {
     try {
-      const response = await fetch("/api/emergency");
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlerts(data);
-      } else {
-        setError(data.message);
-      }
+      const res = await api.get("/api/emergency");
+      setAlerts(res.data || []);
     } catch (err) {
-      setError("Failed to fetch emergency alerts");
+      setError(err.response?.data?.message || "Failed to fetch emergency alerts");
     }
   };
 
@@ -99,37 +91,24 @@ const EmergencyAlert = () => {
     setError("");
 
     try {
-      const response = await fetch("/api/emergency", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          busId: user.busId,
-          conductorId: user.id,
-          alertType: emergencyForm.alertType,
-          description: emergencyForm.description,
-          priority: emergencyForm.priority,
-          location: location,
-        }),
+      await api.post("/api/emergency", {
+        busId: user.busId,
+        alertType: emergencyForm.alertType,
+        description: emergencyForm.description,
+        priority: emergencyForm.priority,
+        location: location,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess("Emergency alert sent successfully");
-        setEmergencyDialog(false);
-        setEmergencyForm({
-          alertType: "medical",
-          description: "",
-          priority: "high",
-        });
-        fetchAlerts();
-      } else {
-        setError(data.message);
-      }
+      setSuccess("Emergency alert sent successfully");
+      setEmergencyDialog(false);
+      setEmergencyForm({
+        alertType: "medical",
+        description: "",
+        priority: "high",
+      });
+      fetchAlerts();
     } catch (err) {
-      setError("Failed to send emergency alert");
+      setError(err.response?.data?.message || "Failed to send emergency alert");
     } finally {
       setLoading(false);
     }

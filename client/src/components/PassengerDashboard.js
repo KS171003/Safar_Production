@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import api from "../utils/api";
 import {
   Container,
   Grid,
@@ -11,23 +11,15 @@ import {
   Alert,
   CircularProgress,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Chip,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Divider,
-  Paper,
 } from "@mui/material";
 import {
   DirectionsBus,
-  LocationOn,
-  Schedule,
-  Speed,
   Search,
   MyLocation,
   Route,
@@ -37,7 +29,6 @@ import BusList from "./BusList";
 import ArrivalPrediction from "./ArrivalPrediction";
 
 const PassengerDashboard = () => {
-  const { user } = useAuth();
   const [searchForm, setSearchForm] = useState({
     departureLocation: "",
     destination: "",
@@ -59,16 +50,11 @@ const PassengerDashboard = () => {
 
   const fetchRoutes = async () => {
     try {
-      const response = await fetch("/api/route");
-      const data = await response.json();
-
-      if (response.ok) {
-        setRoutes(data);
-      } else {
-        setError(data.message);
-      }
+      const res = await api.get("/api/route");
+      const list = Array.isArray(res.data) ? res.data : (res.data?.routes || []);
+      setRoutes(list);
     } catch (err) {
-      setError("Failed to fetch routes");
+      setError(err.response?.data?.message || "Failed to fetch routes");
     }
   };
 
@@ -92,14 +78,10 @@ const PassengerDashboard = () => {
     if (!userLocation) return;
 
     try {
-      const response = await fetch(
+      const res = await api.get(
         `/api/tracking/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lng}&radius=2`
       );
-      const data = await response.json();
-
-      if (response.ok) {
-        setNearbyBuses(data);
-      }
+      setNearbyBuses(res.data || []);
     } catch (err) {
       console.error("Failed to fetch nearby buses:", err);
     }
@@ -116,14 +98,14 @@ const PassengerDashboard = () => {
 
     try {
       // Search for routes based on location
-      const response = await fetch(
+      const res = await api.get(
         `/api/route/search/location?latitude=${
           userLocation?.lat || 0
         }&longitude=${userLocation?.lng || 0}&radius=5`
       );
-      const data = await response.json();
+      const data = res.data;
 
-      if (response.ok) {
+      if (Array.isArray(data)) {
         // Filter routes that match destination
         const matchingRoutes = data.filter((route) =>
           route.stops.some((stop) =>
@@ -140,7 +122,7 @@ const PassengerDashboard = () => {
           setError("No routes found for your destination");
         }
       } else {
-        setError(data.message);
+        setError(data.message || "No routes found");
       }
     } catch (err) {
       setError("Search failed");
@@ -151,16 +133,10 @@ const PassengerDashboard = () => {
 
   const fetchBusesForRoute = async (routeId) => {
     try {
-      const response = await fetch(`/api/tracking/route/${routeId}/live`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setBuses(data);
-      } else {
-        setError(data.message);
-      }
+      const res = await api.get(`/api/tracking/route/${routeId}/live`);
+      setBuses(res.data || []);
     } catch (err) {
-      setError("Failed to fetch buses");
+      setError(err.response?.data?.message || "Failed to fetch buses");
     }
   };
 

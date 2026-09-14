@@ -56,9 +56,11 @@ const LocationTracker = ({ onLocationUpdate, isActive }) => {
           : 0; // Convert m/s to km/h
 
         const direction = position.coords.heading || 0;
+        const accuracy = position.coords.accuracy || 10;
+        const timestamp = position.timestamp || Date.now();
 
         // Update parent component
-        onLocationUpdate(newLocation, speed, direction);
+        onLocationUpdate(newLocation, speed, direction, accuracy, timestamp);
       },
       (error) => {
         console.error("Location error:", error);

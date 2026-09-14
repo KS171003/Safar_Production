@@ -3,7 +3,31 @@ const bcrypt = require("bcryptjs");
 
 /**
  * User Schema for Safar application
+ * Multi-role RBAC: passenger, conductor, dispatcher, admin
+ * Cryptographically hashed refresh token storage with rotation and family tracking
  */
+const refreshTokenSchema = new mongoose.Schema(
+  {
+    tokenHash: {
+      type: String,
+      required: true,
+    },
+    familyId: {
+      type: String,
+      required: true,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -12,6 +36,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       index: true,
+      trim: true,
     },
     password: {
       type: String,
@@ -21,15 +46,19 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
+      trim: true,
     },
     phone: {
       type: String,
       required: true,
+      trim: true,
     },
     userType: {
       type: String,
-      enum: ["conductor", "passenger"],
+      enum: ["passenger", "conductor", "dispatcher", "admin"],
+      default: "passenger",
       required: true,
+      index: true,
     },
     busId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -39,11 +68,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    lastLocation: {
-      latitude: Number,
-      longitude: Number,
-      timestamp: Date,
+    tokenVersion: {
+      type: Number,
+      default: 0,
     },
+    refreshTokens: [refreshTokenSchema],
     failedLoginAttempts: {
       type: Number,
       default: 0,
@@ -51,12 +80,17 @@ const userSchema = new mongoose.Schema(
     lockUntil: {
       type: Date,
     },
-    refreshToken: {
-      type: String,
-    },
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        delete ret.password;
+        delete ret.refreshTokens;
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 
@@ -75,6 +109,33 @@ userSchema.pre("save", async function () {
 // Compare password method
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Check if account is temporarily locked
+userSchema.methods.isLocked = function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+};
+
+// Increment login attempts and lock after 5 failures
+userSchema.methods.incLoginAttempts = async function () {
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    this.failedLoginAttempts = 1;
+    this.lockUntil = null;
+    return this.save();
+  }
+
+  this.failedLoginAttempts += 1;
+  if (this.failedLoginAttempts >= 5 && !this.isLocked()) {
+    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lock
+  }
+  return this.save();
+};
+
+// Reset login attempts on successful login
+userSchema.methods.resetLoginAttempts = async function () {
+  this.failedLoginAttempts = 0;
+  this.lockUntil = null;
+  return this.save();
 };
 
 module.exports = mongoose.model("User", userSchema);

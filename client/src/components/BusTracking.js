@@ -14,7 +14,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Paper,
 } from "@mui/material";
 import {
   DirectionsBus,
@@ -26,6 +25,7 @@ import {
 } from "@mui/icons-material";
 import MapComponent from "./MapComponent";
 import { useSocket } from "../contexts/SocketContext";
+import api from "../utils/api";
 
 const BusTracking = () => {
   const { busId } = useParams();
@@ -43,30 +43,21 @@ const BusTracking = () => {
       socket.emit("join-bus-tracking", busId);
 
       const handleLocationUpdate = (data) => {
-        if (data.busId === busId) {
-          setRealTimeLocation({
-            lat: data.location.latitude,
-            lng: data.location.longitude,
-          });
-
-          setBus((prev) => ({
-            ...prev,
-            currentLocation: {
-              latitude: data.location.latitude,
-              longitude: data.location.longitude,
-              timestamp: data.timestamp,
-            },
-            speed: data.speed,
-            direction: data.direction,
-            lastUpdateTime: data.timestamp,
-          }));
-        }
+        setRealTimeLocation(data.location);
+        setBus((prevBus) => ({
+          ...prevBus,
+          currentLocation: data.location,
+          speed: data.speed,
+          heading: data.heading,
+          lastUpdateTime: data.timestamp,
+        }));
       };
 
       const handleEmergency = (data) => {
-        if (data.busId === busId) {
-          console.log("Emergency alert for this bus:", data);
-        }
+        setBus((prevBus) => ({
+          ...prevBus,
+          emergencyStatus: data.emergencyStatus,
+        }));
       };
 
       socket.on("bus-location-update", handleLocationUpdate);
@@ -82,19 +73,15 @@ const BusTracking = () => {
   const fetchBusData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/bus/${busId}`);
-      const data = await response.json();
+      const res = await api.get(`/api/bus/${busId}`);
+      const data = res.data;
 
-      if (response.ok) {
-        setBus(data);
-        if (data.routeId) {
-          setRoute(data.routeId);
-        }
-      } else {
-        setError(data.message);
+      setBus(data);
+      if (data.routeId) {
+        setRoute(data.routeId);
       }
     } catch (err) {
-      setError("Failed to fetch bus data");
+      setError(err.response?.data?.message || "Failed to fetch bus data");
     } finally {
       setLoading(false);
     }
@@ -118,21 +105,6 @@ const BusTracking = () => {
     const nextStop = bus.routeId.stops[currentStopIndex + 1];
 
     return nextStop ? nextStop.name : "End of Route";
-  };
-
-  const getEstimatedArrival = (bus) => {
-    if (!bus?.estimatedArrivalTime) return "Unknown";
-
-    const now = new Date();
-    const arrival = new Date(bus.estimatedArrivalTime);
-    const diffMinutes = Math.round((arrival - now) / (1000 * 60));
-
-    if (diffMinutes <= 0) return "Arriving now";
-    if (diffMinutes < 60) return `${diffMinutes} min`;
-
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    return `${hours}h ${minutes}m`;
   };
 
   if (loading) {

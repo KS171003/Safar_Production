@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import api from "../utils/api";
 import {
   Card,
   CardContent,
@@ -12,7 +13,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider,
 } from "@mui/material";
 import {
   Schedule,
@@ -41,29 +41,17 @@ const ArrivalPrediction = ({ buses, userLocation, route }) => {
       const predictions = await Promise.all(
         buses.map(async (bus) => {
           try {
-            const response = await fetch("/api/tracking/predict-arrival", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                busId: bus._id,
-                passengerLat: userLocation.lat,
-                passengerLon: userLocation.lng,
-                destinationStopId: route.stops[route.stops.length - 1]._id,
-              }),
+            const res = await api.post("/api/tracking/predict-arrival", {
+              busId: bus._id,
+              passengerLat: userLocation.lat,
+              passengerLon: userLocation.lng,
+              destinationStopId: route.stops[route.stops.length - 1]._id,
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-              return {
-                bus,
-                ...data,
-              };
-            } else {
-              throw new Error(data.message);
-            }
+            return {
+              bus,
+              ...res.data,
+            };
           } catch (err) {
             console.error(
               `Error predicting arrival for bus ${bus.busNumber}:`,
@@ -71,7 +59,7 @@ const ArrivalPrediction = ({ buses, userLocation, route }) => {
             );
             return {
               bus,
-              error: err.message,
+              error: err.response?.data?.message || err.message,
             };
           }
         })

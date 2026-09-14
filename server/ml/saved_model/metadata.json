@@ -1,0 +1,60 @@
+{
+  "modelVersion": "eta-v2.0-hybrid",
+  "datasetType": "synthetic",
+  "datasetVersion": "synthetic-delhi-trips-v2",
+  "featureVersion": "2.0",
+  "featureCount": 16,
+  "trainingTimestamp": "2026-09-14T20:50:26.878Z",
+  "testMetrics": {
+    "hybridModel": {
+      "mae": 2.8246,
+      "rmse": 3.5482,
+      "r2": 0.9743,
+      "medianError": 2.4295,
+      "p90Error": 5.0254,
+      "sampleCount": 2000
+    },
+    "kinematicBaseline": {
+      "mae": 22.1758,
+      "rmse": 28.4553,
+      "r2": -0.6507,
+      "medianError": 17.48,
+      "p90Error": 45.36,
+      "sampleCount": 2000
+    },
+    "historicalAverageBaseline": {
+      "mae": 17.3803,
+      "rmse": 22.1486,
+      "r2": -0.0001,
+      "medianError": 14.794,
+      "p90Error": 30.546,
+      "sampleCount": 2000
+    },
+    "slices": {
+      "rushHour": {
+        "mae": 4.1183,
+        "rmse": 5.1298,
+        "r2": 0.9656,
+        "medianError": 3.5102,
+        "p90Error": 8.0767,
+        "sampleCount": 615
+      },
+      "offPeak": {
+        "mae": 2.2502,
+        "rmse": 2.5486,
+        "r2": 0.9705,
+        "medianError": 2.1982,
+        "p90Error": 3.723,
+        "sampleCount": 1385
+      }
+    }
+  },
+  "datasetSplits": {
+    "trainTrips": 560,
+    "trainSamples": 9335,
+    "valTrips": 120,
+    "valSamples": 2000,
+    "testTrips": 120,
+    "testSamples": 2000
+  }
+}

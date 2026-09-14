@@ -13,7 +13,6 @@ describe('System Health & Observability Endpoints', () => {
 
   test('GET /ready returns database readiness check status', async () => {
     const res = await request(app).get('/ready');
-    // Without active DB connected in mock unit test, it returns 503 or 200 depending on state
     expect([200, 503]).toContain(res.statusCode);
     expect(res.body.status).toBeDefined();
   });
@@ -33,7 +32,7 @@ describe('System Health & Observability Endpoints', () => {
   });
 });
 
-describe('ML Status & Real-Time Metrics Endpoints', () => {
+describe('ML Status, Baselines & Real-Time Metrics Endpoints', () => {
   test('GET /api/ml/status returns model status and metrics metadata', async () => {
     const res = await request(app).get('/api/ml/status');
     expect(res.statusCode).toBe(200);
@@ -41,6 +40,16 @@ describe('ML Status & Real-Time Metrics Endpoints', () => {
     expect(res.body.status).toBe('ready');
     expect(res.body.modelInfo).toBeDefined();
     expect(res.body.modelInfo.metrics).toBeDefined();
+  });
+
+  test('GET /api/ml/baselines returns test benchmarks on held-out dataset', async () => {
+    const res = await request(app).get('/api/ml/baselines');
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.datasetType).toBe('synthetic');
+    expect(res.body.baselines).toBeDefined();
+    expect(res.body.baselines.hybridModel).toBeDefined();
+    expect(res.body.baselines.kinematicBaseline).toBeDefined();
   });
 
   test('GET /api/ml/metrics returns evaluation ring buffer metrics', async () => {

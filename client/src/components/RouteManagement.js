@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import api from "../utils/api";
 import {
   Container,
   Card,
@@ -19,7 +20,6 @@ import {
   IconButton,
   Chip,
   Grid,
-  Paper,
   Divider,
   CircularProgress,
 } from "@mui/material";
@@ -28,10 +28,7 @@ import {
   Edit,
   Delete,
   LocationOn,
-  Route,
-  DirectionsBus,
   Save,
-  Cancel,
 } from "@mui/icons-material";
 
 const RouteManagement = () => {
@@ -51,7 +48,7 @@ const RouteManagement = () => {
     name: "",
     latitude: "",
     longitude: "",
-    estimatedTime: 0,
+    estimatedTime: "",
   });
 
   useEffect(() => {
@@ -61,16 +58,11 @@ const RouteManagement = () => {
   const fetchRoutes = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/route");
-      const data = await response.json();
-
-      if (response.ok) {
-        setRoutes(data);
-      } else {
-        setError(data.message);
-      }
+      const res = await api.get("/api/route");
+      const list = Array.isArray(res.data) ? res.data : (res.data?.routes || []);
+      setRoutes(list);
     } catch (err) {
-      setError("Failed to fetch routes");
+      setError(err.response?.data?.message || "Failed to fetch routes");
     } finally {
       setLoading(false);
     }
@@ -109,34 +101,17 @@ const RouteManagement = () => {
     }
 
     try {
-      const url = editingRoute
-        ? `/api/route/${editingRoute._id}`
-        : "/api/route";
-      const method = editingRoute ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(routeForm),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(
-          editingRoute
-            ? "Route updated successfully"
-            : "Route created successfully"
-        );
-        setDialogOpen(false);
-        fetchRoutes();
+      if (editingRoute) {
+        await api.put(`/api/route/${editingRoute._id}`, routeForm);
+        setSuccess("Route updated successfully");
       } else {
-        setError(data.message);
+        await api.post("/api/route", routeForm);
+        setSuccess("Route created successfully");
       }
+      setDialogOpen(false);
+      fetchRoutes();
     } catch (err) {
-      setError("Failed to save route");
+      setError(err.response?.data?.message || "Failed to save route");
     }
   };
 
@@ -146,19 +121,11 @@ const RouteManagement = () => {
     }
 
     try {
-      const response = await fetch(`/api/route/${routeId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setSuccess("Route deleted successfully");
-        fetchRoutes();
-      } else {
-        const data = await response.json();
-        setError(data.message);
-      }
+      await api.delete(`/api/route/${routeId}`);
+      setSuccess("Route deleted successfully");
+      fetchRoutes();
     } catch (err) {
-      setError("Failed to delete route");
+      setError(err.response?.data?.message || "Failed to delete route");
     }
   };
 

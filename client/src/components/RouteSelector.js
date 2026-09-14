@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import api from "../utils/api";
 import {
   FormControl,
   InputLabel,
@@ -25,16 +26,11 @@ const RouteSelector = ({ onRouteSelect }) => {
   const fetchRoutes = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/route");
-      const data = await response.json();
-
-      if (response.ok) {
-        setRoutes(data);
-      } else {
-        setError(data.message);
-      }
+      const res = await api.get("/api/route");
+      const list = Array.isArray(res.data) ? res.data : (res.data?.routes || []);
+      setRoutes(list);
     } catch (err) {
-      setError("Failed to fetch routes");
+      setError(err.response?.data?.message || "Failed to fetch routes");
     } finally {
       setLoading(false);
     }

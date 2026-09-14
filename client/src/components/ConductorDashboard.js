@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useSocket } from "../contexts/SocketContext";
+import api from "../utils/api";
 import {
   Container,
   Grid,
@@ -15,11 +18,9 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider,
 } from "@mui/material";
 import {
   DirectionsBus,
-  PlayArrow,
   Stop,
   LocationOn,
   Speed,
@@ -32,6 +33,8 @@ import LocationTracker from "./LocationTracker";
 
 const ConductorDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { socket, isConnected } = useSocket();
   const [bus, setBus] = useState(null);
   const [route, setRoute] = useState(null);
   const [isActive, setIsActive] = useState(false);
@@ -39,7 +42,7 @@ const ConductorDashboard = () => {
   const [error, setError] = useState("");
   const [location, setLocation] = useState(null);
   const [speed, setSpeed] = useState(0);
-  const [emergency, setEmergency] = useState(false);
+  const sequenceNumberRef = useRef(1);
 
   useEffect(() => {
     fetchBusData();
@@ -48,20 +51,19 @@ const ConductorDashboard = () => {
   const fetchBusData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/bus/${user.busId}`);
-      const data = await response.json();
+      const res = await api.get(`/api/bus/${user.busId}`);
+      const data = res.data;
 
-      if (response.ok) {
-        setBus(data);
-        setIsActive(data.isActive);
-        if (data.routeId) {
-          setRoute(data.routeId);
-        }
-      } else {
-        setError(data.message);
+      setBus(data);
+      setIsActive(data.isActive);
+      if (data.routeId) {
+        setRoute(data.routeId);
+      }
+      if (data.sequenceNumber) {
+        sequenceNumberRef.current = data.sequenceNumber + 1;
       }
     } catch (err) {
-      setError("Failed to fetch bus data");
+      setError(err.response?.data?.message || "Failed to fetch bus data");
     } finally {
       setLoading(false);
     }
@@ -69,77 +71,66 @@ const ConductorDashboard = () => {
 
   const startRoute = async (selectedRoute) => {
     try {
-      const response = await fetch(`/api/bus/${user.busId}/start-route`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ routeId: selectedRoute._id }),
+      const res = await api.post(`/api/bus/${user.busId}/start-route`, {
+        routeId: selectedRoute._id,
       });
+      const data = res.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setRoute(selectedRoute);
-        setIsActive(true);
-        setBus(data.bus);
-        setError("");
-      } else {
-        setError(data.message);
-      }
+      setRoute(selectedRoute);
+      setIsActive(true);
+      setBus(data.bus);
+      setError("");
     } catch (err) {
-      setError("Failed to start route");
+      setError(err.response?.data?.message || "Failed to start route");
     }
   };
 
   const stopRoute = async () => {
     try {
-      const response = await fetch(`/api/bus/${user.busId}/stop-route`, {
-        method: "POST",
-      });
+      const res = await api.post(`/api/bus/${user.busId}/stop-route`);
+      const data = res.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setIsActive(false);
-        setBus(data.bus);
-        setError("");
-      } else {
-        setError(data.message);
-      }
+      setIsActive(false);
+      setBus(data.bus);
+      setError("");
     } catch (err) {
-      setError("Failed to stop route");
+      setError(err.response?.data?.message || "Failed to stop route");
     }
   };
 
-  const updateLocation = async (newLocation, newSpeed, direction) => {
-    try {
-      const response = await fetch(`/api/bus/${user.busId}/location`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          latitude: newLocation.lat,
-          longitude: newLocation.lng,
-          speed: newSpeed,
-          direction: direction,
-          accuracy: 10,
-        }),
-      });
+  const updateLocation = async (newLocation, newSpeed, direction, accuracy = 10, timestamp = Date.now()) => {
+    const seq = sequenceNumberRef.current++;
+    const telemetryPayload = {
+      busId: user.busId,
+      latitude: newLocation.lat,
+      longitude: newLocation.lng,
+      speed: newSpeed,
+      heading: direction || 0,
+      accuracy: accuracy || 10,
+      sequenceNumber: seq,
+      deviceTimestamp: timestamp,
+      source: "gps",
+    };
 
-      if (response.ok) {
+    // Emit live over authenticated WebSocket
+    if (socket && isConnected) {
+      socket.emit("location-update", telemetryPayload);
+    }
+
+    // Simultaneously persist via REST telemetry pipeline
+    try {
+      const res = await api.post(`/api/bus/${user.busId}/location`, telemetryPayload);
+      if (res.data?.success) {
         setLocation(newLocation);
         setSpeed(newSpeed);
       }
     } catch (err) {
-      console.error("Failed to update location:", err);
+      console.error("Failed to persist location via REST:", err);
     }
   };
 
   const handleEmergency = () => {
-    setEmergency(true);
-    // Emergency functionality will be implemented in EmergencyAlert component
+    navigate("/emergency");
   };
 
   if (loading) {
