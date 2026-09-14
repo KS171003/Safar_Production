@@ -234,36 +234,6 @@ Run `npm run seed` in `server/` to initialize test data:
 
 ---
 
-## 🚀 Getting Started
-
-### Option 1: Docker Compose
-
-```bash
-docker-compose up --build -d
-```
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:5001` (or `5000` depending on port configuration)
-
-### Option 2: Local Setup
-
-1. **Start MongoDB**: Ensure MongoDB is running on `mongodb://localhost:27017/safar`.
-2. **Server**:
-   ```bash
-   cd server
-   npm install
-   npm run seed
-   node ml/trainModel.js
-   npm run dev
-   ```
-3. **Client**:
-   ```bash
-   cd client
-   npm install
-   npm start
-   ```
-
----
-
 ## 📄 License
 This project is licensed under the MIT License.
 
